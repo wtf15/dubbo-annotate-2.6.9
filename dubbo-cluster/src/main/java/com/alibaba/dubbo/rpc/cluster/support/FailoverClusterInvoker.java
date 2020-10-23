@@ -43,6 +43,8 @@ import java.util.Set;
  *
  */
 public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
+    // FailoverClusterInvoker 在调用失败时，会自动切换 Invoker 进行重试。
+    // 默认配置下，Dubbo 会使用这个类作为缺省 Cluster Invoker
 
     private static final Logger logger = LoggerFactory.getLogger(FailoverClusterInvoker.class);
 
@@ -82,6 +84,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
             }
             // 负载均衡。调用select方法做负载均衡，得到要调用的节点，并记录这个节点到步骤invoked 的集合里，
             // 再把己经调用的节点信息放进RPC上下文中
+            // >>>>>>>>>
             Invoker<T> invoker = select(loadbalance, invocation, copyinvokers, invoked);
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);
