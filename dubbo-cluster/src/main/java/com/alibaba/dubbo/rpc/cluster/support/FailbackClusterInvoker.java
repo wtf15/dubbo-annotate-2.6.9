@@ -69,6 +69,9 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
         if (retryFuture == null) {
             synchronized (this) {
                 if (retryFuture == null) {
+                    // 定时线程池会定时把ConcurrentHashMap中的失败请求拿出来重新请求，
+                    // 请求成功则从 ConcurrentHashMap中移除。如果请求还是失败，则异常也会被“ catch” 住，
+                    // 不会影响 ConcurrentHashMap中后面的重试。
                     retryFuture = scheduledExecutorService.scheduleWithFixedDelay(new Runnable() {
 
                         @Override
@@ -88,17 +91,21 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
     }
 
     void retryFailed() {
+        // 没有失败的请求，直接退出
         if (failed.size() == 0) {
             return;
         }
+        // 遍历ConcurrentHashMap,得到所有失败请求
         for (Map.Entry<Invocation, AbstractClusterInvoker<?>> entry : new HashMap<Invocation, AbstractClusterInvoker<?>>(
                 failed).entrySet()) {
             Invocation invocation = entry.getKey();
             Invoker<?> invoker = entry.getValue();
             try {
+                // 重新进行请求，成功则从失败记录中移除
                 invoker.invoke(invocation);
                 failed.remove(invocation);
             } catch (Throwable e) {
+                // 捕获异常，只打印日志，防止异常中断重试过程
                 logger.error("Failed retry to invoke method " + invocation.getMethodName() + ", waiting again.", e);
             }
         }
@@ -107,13 +114,19 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @Override
     protected Result doInvoke(Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         try {
+            // 校验传入的参数。校验从AbstractClusterlnvoker传入的Invoker列表是否为空
             checkInvokers(invokers, invocation);
+            // 负载均衡。调用select方法做负载均衡，得到要调用的节点
             Invoker<T> invoker = select(loadbalance, invocation, invokers, null);
+            // 远程调用。在try代码块中调用invoker#invoke方法做远程调用，“catch” 到异常后直接把invocation保存到重试的ConcurrentHashMap中，并返回一个空的结果集
             return invoker.invoke(invocation);
         } catch (Throwable e) {
+            // 如果调用过程中发生异常，此时仅打印错误日志，不抛出异常
             logger.error("Failback to invoke method " + invocation.getMethodName() + ", wait for retry in background. Ignored exception: "
                     + e.getMessage() + ", ", e);
+            // 记录调用信息
             addFailed(invocation, this);
+            // 返回一个空结果给服务消费者
             return new RpcResult(); // ignore
         }
     }
