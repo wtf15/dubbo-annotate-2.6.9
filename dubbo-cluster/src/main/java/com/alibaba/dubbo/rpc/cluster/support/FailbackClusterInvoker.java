@@ -46,6 +46,8 @@ import java.util.concurrent.TimeUnit;
  *
  */
 public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
+    // FailbackClusterInvoker 会在调用失败后，返回一个空结果给服务消费者。
+    // 并通过定时任务对失败的调用进行重传，适合执行消息通知等操作
 
     private static final Logger logger = LoggerFactory.getLogger(FailbackClusterInvoker.class);
 
@@ -55,9 +57,11 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
      * Use {@link NamedInternalThreadFactory} to produce {@link com.alibaba.dubbo.common.threadlocal.InternalThread}
      * which with the use of {@link com.alibaba.dubbo.common.threadlocal.InternalThreadLocal} in {@link RpcContext}.
      */
+    // 定义了一个定时线程池，默认每5秒把所有失败的调用拿出来，重试一次
     private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(2,
             new NamedInternalThreadFactory("failback-cluster-timer", true));
 
+    // 用来保存失败的调用
     private final ConcurrentMap<Invocation, AbstractClusterInvoker<?>> failed = new ConcurrentHashMap<Invocation, AbstractClusterInvoker<?>>();
     private volatile ScheduledFuture<?> retryFuture;
 
@@ -78,6 +82,7 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
                         public void run() {
                             // collect retry statistics
                             try {
+                                // >>>>>>>>>
                                 retryFailed();
                             } catch (Throwable t) { // Defensive fault tolerance
                                 logger.error("Unexpected error occur at collect statistic", t);
@@ -125,6 +130,7 @@ public class FailbackClusterInvoker<T> extends AbstractClusterInvoker<T> {
             logger.error("Failback to invoke method " + invocation.getMethodName() + ", wait for retry in background. Ignored exception: "
                     + e.getMessage() + ", ", e);
             // 记录调用信息
+            // >>>>>>>>>
             addFailed(invocation, this);
             // 返回一个空结果给服务消费者
             return new RpcResult(); // ignore
