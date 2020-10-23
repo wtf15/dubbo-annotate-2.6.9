@@ -38,6 +38,9 @@ import java.util.List;
 public class FailsafeClusterInvoker<T> extends AbstractClusterInvoker<T> {
     private static final Logger logger = LoggerFactory.getLogger(FailsafeClusterInvoker.class);
 
+    // FailsafeClusterInvoker 是一种失败安全的 Cluster Invoker。
+    // 所谓的失败安全是指，当调用过程中出现异常时，FailsafeClusterInvoker 仅会打印异常，而不会抛出异常。适用于写入审计日志等操作
+
     public FailsafeClusterInvoker(Directory<T> directory) {
         super(directory);
     }
