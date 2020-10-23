@@ -36,6 +36,8 @@ import java.util.List;
  */
 public class FailfastClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
+    // FailfastClusterInvoker 只会进行一次调用，失败后立即抛出异常。适用于幂等操作，比如新增记录
+
     public FailfastClusterInvoker(Directory<T> directory) {
         super(directory);
     }
