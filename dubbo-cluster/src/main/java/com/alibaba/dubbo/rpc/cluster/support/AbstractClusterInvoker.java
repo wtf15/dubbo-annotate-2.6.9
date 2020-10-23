@@ -262,17 +262,23 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         LoadBalance loadbalance = null;
 
         // binding attachments into invocation.
+        // 绑定 attachments 到 invocation 中.
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
         if (contextAttachments != null && contextAttachments.size() != 0) {
             ((RpcInvocation) invocation).addAttachments(contextAttachments);
         }
 
+        // 列举 Invoker
+        // >>>>>>>>>
         List<Invoker<T>> invokers = list(invocation);
         if (invokers != null && !invokers.isEmpty()) {
+            // 加载 LoadBalance
             loadbalance = ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(RpcUtils.getMethodName(invocation), Constants.LOADBALANCE_KEY, Constants.DEFAULT_LOADBALANCE));
         }
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
+        // 调用 doInvoke 进行后续操作
+        // >>>>>>>>>
         return doInvoke(invocation, invokers, loadbalance);
     }
 
@@ -302,10 +308,12 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
     }
 
+    // 抽象方法，由子类实现
     protected abstract Result doInvoke(Invocation invocation, List<Invoker<T>> invokers,
                                        LoadBalance loadbalance) throws RpcException;
 
     protected List<Invoker<T>> list(Invocation invocation) throws RpcException {
+        // 调用 Directory 的 list 方法列举 Invoker
         List<Invoker<T>> invokers = directory.list(invocation);
         return invokers;
     }
