@@ -65,12 +65,15 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             checkInvokers(invokers, invocation);
             final List<Invoker<T>> selected;
             final int forks = getUrl().getParameter(Constants.FORKS_KEY, Constants.DEFAULT_FORKS);
+            // 获取超时配置
             final int timeout = getUrl().getParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
             // 获取最终要调用的Invoker列表
+            // 如果 forks 配置不合理，则直接将 invokers 赋值给 selected
             if (forks <= 0 || forks >= invokers.size()) {
                 selected = invokers;
             } else {
                 selected = new ArrayList<Invoker<T>>();
+                // 循环选出 forks 个 Invoker，并添加到 selected 中
                 for (int i = 0; i < forks; i++) {
                     // TODO. Add some comment here, refer chinese version for more details.
                     Invoker<T> invoker = select(loadbalance, invocation, invokers, selected);
