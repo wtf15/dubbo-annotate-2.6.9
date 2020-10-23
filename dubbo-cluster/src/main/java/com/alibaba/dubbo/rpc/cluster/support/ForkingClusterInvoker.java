@@ -43,6 +43,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
+    // ForkingClusterInvoker 会在运行时通过线程池创建多个线程，并发调用多个服务提供者。
+    // 只要有一个服务提供者成功返回了结果，doInvoke 方法就会立即结束运行。
+    // 应用场景是在一些对实时性要求比较高读操作（注意是读操作，并行写操作可能不安全）下使用，但这将会耗费更多的资源
+
     /**
      * Use {@link NamedInternalThreadFactory} to produce {@link com.alibaba.dubbo.common.threadlocal.InternalThread}
      * which with the use of {@link com.alibaba.dubbo.common.threadlocal.InternalThreadLocal} in {@link RpcContext}.
@@ -62,6 +66,7 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             final List<Invoker<T>> selected;
             final int forks = getUrl().getParameter(Constants.FORKS_KEY, Constants.DEFAULT_FORKS);
             final int timeout = getUrl().getParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
+            // 获取最终要调用的Invoker列表
             if (forks <= 0 || forks >= invokers.size()) {
                 selected = invokers;
             } else {
@@ -74,6 +79,8 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                     }
                 }
             }
+            // 调用前的准备工作。设置要调用的Invoker列表到RPC上下文;初始化一个异常计数器;
+            // 初始化一个阻塞队列，用于记录并行调用的结果
             RpcContext.getContext().setInvokers((List) selected);
             final AtomicInteger count = new AtomicInteger();
             final BlockingQueue<Object> ref = new LinkedBlockingQueue<Object>();
@@ -82,9 +89,13 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                     @Override
                     public void run() {
                         try {
+                            // 执行调用。循环使用线程池并行调用，调用成功，则把结果加入阻塞队列
                             Result result = invoker.invoke(invocation);
                             ref.offer(result);
                         } catch (Throwable e) {
+                            // 调用失败，则失败计数+1。
+                            // 如果所有线程的调用都失败了，即失败计数>=所有可调用的Invoker时，
+                            // 则把异常信息加入阻塞队列,目的是全部失败才返回异常的效果
                             int value = count.incrementAndGet();
                             if (value >= selected.size()) {
                                 ref.offer(e);
@@ -94,6 +105,8 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 });
             }
             try {
+                // 同步等待结果。主线程中会使用阻塞队列的poll(-超时时间“)方法，同步等待阻塞队列中的第一个结果，
+                // 如果是正常结果则返回，如果是异常则抛出
                 Object ret = ref.poll(timeout, TimeUnit.MILLISECONDS);
                 if (ret instanceof Throwable) {
                     Throwable e = (Throwable) ret;
