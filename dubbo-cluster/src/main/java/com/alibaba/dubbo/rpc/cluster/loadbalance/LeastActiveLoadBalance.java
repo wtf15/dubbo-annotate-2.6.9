@@ -36,16 +36,25 @@ public class LeastActiveLoadBalance extends AbstractLoadBalance {
 
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
-        int length = invokers.size(); // Number of invokers
-        int leastActive = -1; // The least active value of all invokers
-        int leastCount = 0; // The number of invokers having the same least active value (leastActive)
-        int[] leastIndexs = new int[length]; // The index of invokers having the same least active value (leastActive)
-        int totalWeight = 0; // The sum of with warmup weights
-        int firstWeight = 0; // Initial value, used for comparision
-        boolean sameWeight = true; // Every invoker has the same weight value?
+        // Number of invokers
+        int length = invokers.size();
+        // The least active value of all invokers
+        int leastActive = -1;
+        // The number of invokers having the same least active value (leastActive)
+        int leastCount = 0;
+        // The index of invokers having the same least active value (leastActive)
+        int[] leastIndexs = new int[length];
+        // The sum of with warmup weights
+        int totalWeight = 0;
+        // Initial value, used for comparision
+        int firstWeight = 0;
+        // Every invoker has the same weight value?
+        boolean sameWeight = true;
+        // 遍历 invokers 列表
         for (int i = 0; i < length; i++) {
             Invoker<T> invoker = invokers.get(i);
-            int active = RpcStatus.getStatus(invoker.getUrl(), invocation.getMethodName()).getActive(); // Active number
+            // Active number
+            int active = RpcStatus.getStatus(invoker.getUrl(), invocation.getMethodName()).getActive();
             int afterWarmup = getWeight(invoker, invocation); // Weight
             if (leastActive == -1 || active < leastActive) { // Restart, when find a invoker having smaller least active value.
                 leastActive = active; // Record the current least active value
@@ -65,22 +74,29 @@ public class LeastActiveLoadBalance extends AbstractLoadBalance {
             }
         }
         // assert(leastCount > 0)
+        // 当只有一个 Invoker 具有最小活跃数，此时直接返回该 Invoker 即可
         if (leastCount == 1) {
             // If we got exactly one invoker having the least active value, return this invoker directly.
             return invokers.get(leastIndexs[0]);
         }
+        // 有多个 Invoker 具有相同的最小活跃数，但它们之间的权重不同
         if (!sameWeight && totalWeight > 0) {
             // If (not every invoker has the same weight & at least one invoker's weight>0), select randomly based on totalWeight.
+            // 随机生成一个 [0, totalWeight) 之间的数字
             int offsetWeight = random.nextInt(totalWeight) + 1;
             // Return a invoker based on the random value.
+            // 循环让随机数减去具有最小活跃数的 Invoker 的权重值，
+            // 当 offset 小于等于0时，返回相应的 Invoker
             for (int i = 0; i < leastCount; i++) {
                 int leastIndex = leastIndexs[i];
+                // 获取权重值，并让随机数减去权重值
                 offsetWeight -= getWeight(invokers.get(leastIndex), invocation);
                 if (offsetWeight <= 0)
                     return invokers.get(leastIndex);
             }
         }
         // If all invokers have the same weight value or totalWeight=0, return evenly.
+        // 如果权重相同或权重为0时，随机返回一个 Invoker
         return invokers.get(leastIndexs[random.nextInt(leastCount)]);
     }
 }
