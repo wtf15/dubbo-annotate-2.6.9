@@ -69,18 +69,23 @@ public class MockClusterInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
 
+        // 获取Invoker的Mock参数
         String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), Constants.MOCK_KEY, Boolean.FALSE.toString()).trim();
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
+            // 如果该Invoker根本就没有配置Mock,则直接调用Invoker的invoke方法并把结果返回
             result = this.invoker.invoke(invocation);
+            // 判断参数是否以force开头，即判断是否强制Mock
         } else if (value.startsWith("force")) {
             if (logger.isWarnEnabled()) {
                 logger.info("force-mock: " + invocation.getMethodName() + " force-mock enabled , url : " + directory.getUrl());
             }
             //force:direct mock
+            // >>>>>>>>>
             result = doMockInvoke(invocation, null);
         } else {
             //fail-mock
+            // 进入失败后Mock的逻辑。
             try {
                 result = this.invoker.invoke(invocation);
             } catch (RpcException e) {
@@ -90,6 +95,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                     if (logger.isWarnEnabled()) {
                         logger.warn("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
                     }
+                    // >>>>>>>>>
                     result = doMockInvoke(invocation, e);
                 }
             }
@@ -102,15 +108,20 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         Result result = null;
         Invoker<T> minvoker;
 
+        // 通过 selectMocklnvoker 获得所有 Mock 类型的 Invoke
+        // >>>>>>>>>
         List<Invoker<T>> mockInvokers = selectMockInvoker(invocation);
+        // 如果一个Mock类型的Invoker都没有返回，则通过directory的URL新创建一个Mockinvoker
         if (mockInvokers == null || mockInvokers.isEmpty()) {
             minvoker = (Invoker<T>) new MockInvoker(directory.getUrl());
         } else {
+            // 如果有Mock类型的Invoker, 则使用第一个
             minvoker = mockInvokers.get(0);
         }
         try {
             result = minvoker.invoke(invocation);
         } catch (RpcException me) {
+            // 如果出现了异常，并且是业务异常，则包装成一个RpcResult返回
             if (me.isBiz()) {
                 result = new RpcResult(me.getCause());
             } else {
@@ -147,6 +158,10 @@ public class MockClusterInvoker<T> implements Invoker<T> {
             ((RpcInvocation) invocation).setAttachment(Constants.INVOCATION_NEED_MOCK, Boolean.TRUE.toString());
             //directory will return a list of normal invokers if Constants.INVOCATION_NEED_MOCK is present in invocation, otherwise, a list of mock invokers will return.
             try {
+                // electMocklnvoker 在对象的 attachment属性中偷偷放进一个invocation.need.mock=true的标识。
+                // directory在list方法中列出 所有Invoker的时候，如果检测到这个标识，则使用MockinvokersSelector来过滤Invoker,
+                // 而不是使用普通route实现，最后返回Mock类型的Invoker列表。
+                // >>>>>>>>>
                 invokers = directory.list(invocation);
             } catch (RpcException e) {
                 if (logger.isInfoEnabled()) {

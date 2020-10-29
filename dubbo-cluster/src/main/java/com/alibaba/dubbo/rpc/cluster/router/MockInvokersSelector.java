@@ -40,13 +40,18 @@ public class MockInvokersSelector extends AbstractRouter {
     @Override
     public <T> List<Invoker<T>> route(final List<Invoker<T>> invokers,
                                       URL url, final Invocation invocation) throws RpcException {
+        // 判断是否需要做Mock过滤
         if (invocation.getAttachments() == null) {
+            // 不需要做Mock过滤
+            // >>>>>>>>>
             return getNormalInvokers(invokers);
         } else {
             String value = invocation.getAttachments().get(Constants.INVOCATION_NEED_MOCK);
             if (value == null)
+                // 不需要做Mock过滤
                 return getNormalInvokers(invokers);
             else if (Boolean.TRUE.toString().equalsIgnoreCase(value)) {
+                // >>>>>>>>>
                 return getMockedInvokers(invokers);
             }
         }
@@ -54,10 +59,12 @@ public class MockInvokersSelector extends AbstractRouter {
     }
 
     private <T> List<Invoker<T>> getMockedInvokers(final List<Invoker<T>> invokers) {
+        // 如果它们的protocol中都没有Mock参数，则直接返回null
         if (!hasMockProviders(invokers)) {
             return null;
         }
         List<Invoker<T>> sInvokers = new ArrayList<Invoker<T>>(1);
+        // 把protocol中所有含有Mock标识的取出来并返回
         for (Invoker<T> invoker : invokers) {
             if (invoker.getUrl().getProtocol().equals(Constants.MOCK_PROTOCOL)) {
                 sInvokers.add(invoker);
@@ -67,10 +74,13 @@ public class MockInvokersSelector extends AbstractRouter {
     }
 
     private <T> List<Invoker<T>> getNormalInvokers(final List<Invoker<T>> invokers) {
+        // 如果它们的protocol中都没有Mock参数，则整个列表直接返回
+        // >>>>>>>>>
         if (!hasMockProviders(invokers)) {
             return invokers;
         } else {
             List<Invoker<T>> sInvokers = new ArrayList<Invoker<T>>(invokers.size());
+            // 把protocol中所有没有Mock标识的取出来并返回
             for (Invoker<T> invoker : invokers) {
                 if (!invoker.getUrl().getProtocol().equals(Constants.MOCK_PROTOCOL)) {
                     sInvokers.add(invoker);
