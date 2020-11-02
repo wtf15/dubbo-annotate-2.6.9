@@ -36,21 +36,26 @@ public class ActiveLimitFilter implements Filter {
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         URL url = invoker.getUrl();
         String methodName = invocation.getMethodName();
+        // 获取最大并发数
         int max = invoker.getUrl().getMethodParameter(methodName, Constants.ACTIVES_KEY, 0);
         RpcStatus count = RpcStatus.getStatus(invoker.getUrl(), invocation.getMethodName());
         if (max > 0) {
+            // 获取超时时间
             long timeout = invoker.getUrl().getMethodParameter(invocation.getMethodName(), Constants.TIMEOUT_KEY, 0);
             long start = System.currentTimeMillis();
             long remain = timeout;
+            // 获取当前并发数
             int active = count.getActive();
             if (active >= max) {
                 synchronized (count) {
+                    // 加锁，并循环获取当前并发数,如果大于限量阈值则等待
                     while ((active = count.getActive()) >= max) {
                         try {
                             count.wait(remain);
                         } catch (InterruptedException e) {
                         }
                         long elapsed = System.currentTimeMillis() - start;
+                        // 剩余等待时间
                         remain = timeout - elapsed;
                         if (remain <= 0) {
                             throw new RpcException("Waiting concurrent invoke timeout in client-side for service:  "
@@ -64,10 +69,14 @@ public class ActiveLimitFilter implements Filter {
             }
         }
         try {
+            // 当前并发数低于限流阈值，则会从上面的while循环跳出并来到这里
             long begin = System.currentTimeMillis();
+            // 并发计数器原子+1
             RpcStatus.beginCount(url, methodName);
             try {
+                // 执行 Invoker调用
                 Result result = invoker.invoke(invocation);
+                // 调用结束，并发计数器原子-1
                 RpcStatus.endCount(url, methodName, System.currentTimeMillis() - begin, true);
                 return result;
             } catch (RuntimeException t) {
@@ -75,6 +84,7 @@ public class ActiveLimitFilter implements Filter {
                 throw t;
             }
         } finally {
+            // 当前请求已经结束，通过notify唤醒另外一个线程
             if (max > 0) {
                 synchronized (count) {
                     count.notify();

@@ -39,6 +39,7 @@ public class ContextFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         Map<String, String> attachments = invocation.getAttachments();
+        // 清除异步属性。防止异步属性传到过滤器链的下一个环节
         if (attachments != null) {
             attachments = new HashMap<String, String>(attachments);
             attachments.remove(Constants.PATH_KEY);
@@ -49,6 +50,7 @@ public class ContextFilter implements Filter {
             attachments.remove(Constants.TIMEOUT_KEY);
             attachments.remove(Constants.ASYNC_KEY);// Remove async property to avoid being passed to the following invoke chain.
         }
+        // 设置当前请求的上下文
         RpcContext.getContext()
                 .setInvoker(invoker)
                 .setInvocation(invocation)
@@ -70,11 +72,14 @@ public class ContextFilter implements Filter {
             ((RpcInvocation) invocation).setInvoker(invoker);
         }
         try {
+            // 调用过滤器链的下一个节点
             RpcResult result = (RpcResult) invoker.invoke(invocation);
             // pass attachments to result
             result.addAttachments(RpcContext.getServerContext().getAttachments());
             return result;
         } finally {
+            // 清除上下文信息。对于异步调用的场景，即使是同一个线程，处理不同的请求也会创
+            // 建一个新的RpcContext对象。因此调用完成后，需要清理对应的上下文信息
             RpcContext.removeContext();
             RpcContext.getServerContext().clearAttachments();
         }

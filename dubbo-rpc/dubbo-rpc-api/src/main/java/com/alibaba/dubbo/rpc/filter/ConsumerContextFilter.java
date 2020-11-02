@@ -36,6 +36,7 @@ public class ConsumerContextFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        // 设置当前请求上下文
         RpcContext.getContext()
                 .setInvoker(invoker)
                 .setInvocation(invocation)
@@ -46,10 +47,12 @@ public class ConsumerContextFilter implements Filter {
             ((RpcInvocation) invocation).setInvoker(invoker);
         }
         try {
+            // 服务调用
             RpcResult result = (RpcResult) invoker.invoke(invocation);
             RpcContext.getServerContext().setAttachments(result.getAttachments());
             return result;
         } finally {
+            // 清除上下文信息。每次服务调用完成，都会把附件上下文清除，如隐式传参。
             RpcContext.getContext().clearAttachments();
         }
     }

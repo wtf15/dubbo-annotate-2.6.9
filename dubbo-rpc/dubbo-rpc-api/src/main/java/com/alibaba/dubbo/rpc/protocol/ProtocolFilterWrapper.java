@@ -45,10 +45,13 @@ public class ProtocolFilterWrapper implements Protocol {
 
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
         Invoker<T> last = invoker;
+        // 获取所有的过滤器.包括有旧Activate注解默认启动的和用户在XML中自定义配置的
         List<Filter> filters = ExtensionLoader.getExtensionLoader(Filter.class).getActivateExtension(invoker.getUrl(), key, group);
         if (!filters.isEmpty()) {
+            // 对过滤器做倒排遍历
             for (int i = filters.size() - 1; i >= 0; i--) {
                 final Filter filter = filters.get(i);
+                // 这段逻辑把last节点变成next节点，并放到filter链的next中
                 final Invoker<T> next = last;
                 last = new Invoker<T>() {
 
@@ -69,6 +72,7 @@ public class ProtocolFilterWrapper implements Protocol {
 
                     @Override
                     public Result invoke(Invocation invocation) throws RpcException {
+                        // 设置过滤器链的下一个节点，不断循环形成过滤器链
                         return filter.invoke(next, invocation);
                     }
 
@@ -92,19 +96,25 @@ public class ProtocolFilterWrapper implements Protocol {
         return protocol.getDefaultPort();
     }
 
+    // 露服务的时候会调用 buildInvokerChain
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
             return protocol.export(invoker);
         }
+        // 此处会传入Constants.PROVIDER,标识自己是服务提供者类型的调用链
+        // >>>>>>>>> buildInvokerChain
         return protocol.export(buildInvokerChain(invoker, Constants.SERVICE_FILTER_KEY, Constants.PROVIDER));
     }
 
+    // 引用远程服务的时候也会调用buildInvokerChain
     @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
             return protocol.refer(type, url);
         }
+        // 此处会传入Constants.CONSUMER,标识自己是消费类型的调用链
+        // >>>>>>>>> buildInvokerChain
         return buildInvokerChain(protocol.refer(type, url), Constants.REFERENCE_FILTER_KEY, Constants.CONSUMER);
     }
 

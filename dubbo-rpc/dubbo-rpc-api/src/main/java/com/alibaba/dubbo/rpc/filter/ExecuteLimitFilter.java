@@ -41,7 +41,9 @@ public class ExecuteLimitFilter implements Filter {
         Semaphore executesLimit = null;
         boolean acquireResult = false;
         int max = url.getMethodParameter(methodName, Constants.EXECUTES_KEY, 0);
+        // 如果该接口/方法设置了executes并且值大于0
         if (max > 0) {
+            // 取出该接口/方法对应的计数器
             RpcStatus count = RpcStatus.getStatus(url, invocation.getMethodName());
 //            if (count.getActive() >= max) {
             /**
@@ -49,6 +51,7 @@ public class ExecuteLimitFilter implements Filter {
              * use semaphore for concurrency control (to limit thread number)
              */
             executesLimit = count.getSemaphore(max);
+            // 信号量Semaphore维护了一组许可，用来管理有限的资源，比如这里的线程数
             if(executesLimit != null && !(acquireResult = executesLimit.tryAcquire())) {
                 throw new RpcException("Failed to invoke method " + invocation.getMethodName() + " in provider " + url + ", cause: The service using threads greater than <dubbo:service executes=\"" + max + "\" /> limited.");
             }

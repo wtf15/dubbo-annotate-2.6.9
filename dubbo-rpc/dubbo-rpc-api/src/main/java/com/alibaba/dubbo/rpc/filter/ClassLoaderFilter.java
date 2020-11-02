@@ -32,13 +32,19 @@ public class ClassLoaderFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        // 获取当前线程的类加载器
         ClassLoader ocl = Thread.currentThread().getContextClassLoader();
+        // 把当前线程的上下文类加载设置为接口的类加载器
         Thread.currentThread().setContextClassLoader(invoker.getInterface().getClassLoader());
         try {
             return invoker.invoke(invocation);
         } finally {
+            // 把当前的上下文类加载器还原回去
             Thread.currentThread().setContextClassLoader(ocl);
         }
+        /**
+         * 就是临时切换了一下上下文类加载器。为什么要这么做呢?首先读者需要理解Java的类加载机制和双亲委派模型等
+         */
     }
 
 }

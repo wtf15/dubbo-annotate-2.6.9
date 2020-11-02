@@ -30,11 +30,20 @@ public class DefaultTPSLimiter implements TPSLimiter {
 
     @Override
     public boolean isAllowable(URL url, Invocation invocation) {
+        // 获取URL中的参数，包含每次发放的令牌数、令牌刷新时间间隔
         int rate = url.getParameter(Constants.TPS_LIMIT_RATE_KEY, -1);
         long interval = url.getParameter(Constants.TPS_LIMIT_INTERVAL_KEY,
                 Constants.DEFAULT_TPS_LIMIT_INTERVAL);
         String serviceKey = url.getServiceKey();
+        // 如果设置了每次发放的令牌数则开始限流校验
         if (rate > 0) {
+            /**
+             * DefaultTPSLimiter内部用一个 ConcurrentMap 缓存每个接口的令牌数，
+             * key 是 interface + group + version, value 是一个 Statitem 对象，
+             * 它包装了令牌刷新时间间隔、每次发放的令牌数等属性。
+             * 首先判断上次发放令牌的时间点到现在是否超过时间间隔了，如果超过了就重新发放令牌，之前没用完的不会叠加，而是直接覆盖。
+             * 然后，通过CAS的方式-1令牌，减掉后令牌数如果小于0则会触发限流。
+             */
             StatItem statItem = stats.get(serviceKey);
             if (statItem == null) {
                 stats.putIfAbsent(serviceKey,

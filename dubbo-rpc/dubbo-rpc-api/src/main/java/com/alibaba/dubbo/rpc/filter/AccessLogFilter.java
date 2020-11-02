@@ -92,6 +92,9 @@ public class AccessLogFilter implements Filter {
 
     private void log(String accesslog, String logmessage) {
         init();
+        // 把日志加入一个 ConcurrentMap<String, ConcurrentHashSet<String>>中暂存
+        // key 是自定义的 accesslog 值(如accesslog="custom-access.log")，value就是对应的日志集合
+        // 后续等待定时线程不断遍历整个Map,把日志写入对应的文件。
         Set<String> logSet = logQueue.get(accesslog);
         if (logSet == null) {
             logQueue.putIfAbsent(accesslog, new ConcurrentHashSet<String>());
@@ -100,6 +103,7 @@ public class AccessLogFilter implements Filter {
         if (logSet.size() < LOG_MAX_BUFFER) {
             logSet.add(logmessage);
         }
+        // 这里有两个问题需要注意，首先由于Set集合是无序的，因此日志输出到文件也是无序的; 其次由于是异步刷盘，突然宕机会导致一小部分日志丢失。
     }
 
     @Override
@@ -107,10 +111,15 @@ public class AccessLogFilter implements Filter {
         try {
             String accesslog = invoker.getUrl().getParameter(Constants.ACCESS_LOG_KEY);
             if (ConfigUtils.isNotEmpty(accesslog)) {
+                // 获取上下文
                 RpcContext context = RpcContext.getContext();
+                // 获取接口名
                 String serviceName = invoker.getInterface().getName();
+                // 版本
                 String version = invoker.getUrl().getParameter(Constants.VERSION_KEY);
+                // 分组信息
                 String group = invoker.getUrl().getParameter(Constants.GROUP_KEY);
+                // 构建日志字符串
                 StringBuilder sn = new StringBuilder();
                 sn.append("[").append(new SimpleDateFormat(MESSAGE_DATE_FORMAT).format(new Date())).append("] ").append(context.getRemoteHost()).append(":").append(context.getRemotePort())
                         .append(" -> ").append(context.getLocalHost()).append(":").append(context.getLocalPort())
@@ -143,9 +152,13 @@ public class AccessLogFilter implements Filter {
                     sn.append(JSON.toJSONString(args));
                 }
                 String msg = sn.toString();
+                // 如果accesslog是true或者default。
+                // 即如果用户配置了使用应用本身的日志组件，则直接通过封装的LoggerFactory打印日志
                 if (ConfigUtils.isDefault(accesslog)) {
                     LoggerFactory.getLogger(ACCESS_LOG_KEY + "." + invoker.getInterface().getName()).info(msg);
                 } else {
+                    // 如果用户配置了日志要输出到自定义的文件中
+                    // >>>>>>>>>
                     log(accesslog, msg);
                 }
             }
