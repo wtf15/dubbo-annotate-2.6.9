@@ -108,6 +108,8 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
             parserContext.getRegistry().registerBeanDefinition(id, beanDefinition);
             beanDefinition.getPropertyValues().addPropertyValue("id", id);
         }
+        // 上面的逻辑主要负责把标签解析成对应的Bean定义并注册到Spring上下文中，同时保证了Spring容器中相同id的Bean不会被覆盖
+
         if (ProtocolConfig.class.equals(beanClass)) {
             for (String name : parserContext.getRegistry().getBeanDefinitionNames()) {
                 BeanDefinition definition = parserContext.getRegistry().getBeanDefinition(name);
@@ -131,10 +133,16 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 beanDefinition.getPropertyValues().addPropertyValue("ref", new BeanDefinitionHolder(classDefinition, id + "Impl"));
             }
         } else if (ProviderConfig.class.equals(beanClass)) {
+            // 主要逻辑是处理内部嵌套的标签
+            // 比如<dubbo:provider>内部可能嵌套了<dubbo:service>，如果使用了嵌套标签，则内部的标签对象会自动持有外层标签的对象，
+            // 例如<dubbo:provider>内部定义了<dubbo:service>,解析内部的service并生成Bean的时候，会把外层provider实例对象注入service
+            // 这种设计方式允许内部标签直接获取外部标签属性。
             parseNested(element, parserContext, ServiceBean.class, true, "service", "provider", id, beanDefinition);
         } else if (ConsumerConfig.class.equals(beanClass)) {
             parseNested(element, parserContext, ReferenceBean.class, false, "reference", "consumer", id, beanDefinition);
         }
+
+
         Set<String> props = new HashSet<String>();
         ManagedMap parameters = null;
         // 获取具体配置对象所有方法，比如ProviderConfig类
