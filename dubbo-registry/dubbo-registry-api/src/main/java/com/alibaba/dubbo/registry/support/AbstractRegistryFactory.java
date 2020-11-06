@@ -89,6 +89,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
         // Lock the registry access process to ensure a single instance of the registry
         LOCK.lock();
         try {
+            // 访问缓存
             Registry registry = REGISTRIES.get(key);
             // 缓存中有则直接返回
             if (registry != null) {
@@ -97,6 +98,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
             //create registry by spi/ioc
             // 如果注册中心还没创建过，则调用抽象方法createRegistry重新创建一个，该方法有具体的子类实现
             // 抽象模版方法
+            // >>>>>>>>> ZookeeperRegistryFactory#createRegistry
             registry = createRegistry(url);
             if (registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

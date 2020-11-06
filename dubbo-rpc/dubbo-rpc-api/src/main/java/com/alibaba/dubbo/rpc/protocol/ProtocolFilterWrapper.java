@@ -53,6 +53,7 @@ public class ProtocolFilterWrapper implements Protocol {
                 final Filter filter = filters.get(i);
                 // 这段逻辑把last节点变成next节点，并放到filter链的next中
                 final Invoker<T> next = last;
+                // 为每个filte r生成一个exporter,依次串起来
                 last = new Invoker<T>() {
 
                     @Override
@@ -104,6 +105,7 @@ public class ProtocolFilterWrapper implements Protocol {
         }
         // 此处会传入Constants.PROVIDER,标识自己是服务提供者类型的调用链
         // >>>>>>>>> buildInvokerChain
+        // >>>>>>>>> DubboProtocol#export
         return protocol.export(buildInvokerChain(invoker, Constants.SERVICE_FILTER_KEY, Constants.PROVIDER));
     }
 
@@ -114,6 +116,7 @@ public class ProtocolFilterWrapper implements Protocol {
             return protocol.refer(type, url);
         }
         // 此处会传入Constants.CONSUMER,标识自己是消费类型的调用链
+        // 在触发Dubbo协议暴露前先对服务Invoker做了一层拦截器构建，在加载所有拦截器时 会过滤只对provider生效的数据
         // >>>>>>>>> buildInvokerChain
         return buildInvokerChain(protocol.refer(type, url), Constants.REFERENCE_FILTER_KEY, Constants.CONSUMER);
     }
