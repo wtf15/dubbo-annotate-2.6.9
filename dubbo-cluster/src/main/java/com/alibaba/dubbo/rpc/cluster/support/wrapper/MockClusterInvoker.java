@@ -74,19 +74,23 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
             // 如果该Invoker根本就没有配置Mock,则直接调用Invoker的invoke方法并把结果返回
+            // 比如 FailoverClusterInvoker
             result = this.invoker.invoke(invocation);
-            // 判断参数是否以force开头，即判断是否强制Mock
+        // 判断参数是否以force开头，即判断是否强制Mock,如果是直接执行 mock 逻辑，不发起远程调用
         } else if (value.startsWith("force")) {
             if (logger.isWarnEnabled()) {
                 logger.info("force-mock: " + invocation.getMethodName() + " force-mock enabled , url : " + directory.getUrl());
             }
             //force:direct mock
-            // >>>>>>>>>
+            // >>>>>>>>> MockClusterInvoker#doMockInvoke
             result = doMockInvoke(invocation, null);
         } else {
             //fail-mock
+            // fail:xxx 表示消费方对调用服务失败后，再执行 mock 逻辑，不抛出异常
             // 进入失败后Mock的逻辑。
             try {
+                // 调用其他 Invoker 对象的 invoke 方法
+                // >>>>>>>>> AbstractInvoker#invoke
                 result = this.invoker.invoke(invocation);
             } catch (RpcException e) {
                 if (e.isBiz()) {
@@ -95,6 +99,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                     if (logger.isWarnEnabled()) {
                         logger.warn("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
                     }
+                    // 调用失败，执行 mock 逻辑
                     // >>>>>>>>>
                     result = doMockInvoke(invocation, e);
                 }
@@ -159,7 +164,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
             //directory will return a list of normal invokers if Constants.INVOCATION_NEED_MOCK is present in invocation, otherwise, a list of mock invokers will return.
             try {
                 // electMocklnvoker 在对象的 attachment属性中偷偷放进一个invocation.need.mock=true的标识。
-                // directory在list方法中列出 所有Invoker的时候，如果检测到这个标识，则使用MockinvokersSelector来过滤Invoker,
+                // directory在list方法中列出所有Invoker的时候，如果检测到这个标识，则使用MockinvokersSelector来过滤Invoker,
                 // 而不是使用普通route实现，最后返回Mock类型的Invoker列表。
                 // >>>>>>>>>
                 invokers = directory.list(invocation);
