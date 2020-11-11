@@ -301,9 +301,11 @@ public class ExtensionLoader<T> {
         if (name == null || name.length() == 0)
             throw new IllegalArgumentException("Extension name == null");
         if ("true".equals(name)) {
+            // 获取默认的拓展实现类
             // >>>>>>>>>
             return getDefaultExtension();
         }
+        // Holder，顾名思义，用于持有目标对象
         Holder<Object> holder = cachedInstances.get(name);
         if (holder == null) {
             cachedInstances.putIfAbsent(name, new Holder<Object>());
@@ -314,8 +316,10 @@ public class ExtensionLoader<T> {
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // 创建拓展实例
                     // >>>>>>>>>
                     instance = createExtension(name);
+                    // 设置实例到 holder 中
                     holder.set(instance);
                 }
             }
@@ -500,6 +504,8 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        // 从配置文件中加载所有的拓展类，可得到“配置项名称”到“配置类”的映射关系表
+        // >>>>>>>>>>
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
@@ -507,6 +513,7 @@ public class ExtensionLoader<T> {
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
+                // 通过反射创建实例
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
@@ -516,7 +523,10 @@ public class ExtensionLoader<T> {
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             // 遍历扩展点包转类，用于初始化包转类实例
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
+                // 循环创建 Wrapper 实例
                 for (Class<?> wrapperClass : wrapperClasses) {
+                    // 将当前 instance 作为参数传给 Wrapper 的构造方法，并通过反射创建 Wrapper 实例。
+                    // 然后向 Wrapper 实例中注入依赖，最后将 Wrapper 实例再次赋值给 instance 变量
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
@@ -530,6 +540,7 @@ public class ExtensionLoader<T> {
     private T injectExtension(T instance) {
         try {
             if (objectFactory != null) {
+                // 遍历目标类的所有方法
                 for (Method method : instance.getClass().getMethods()) {
                     // 找到以set开头的方法，要求只有一个参数，并且是public方法
                     if (method.getName().startsWith("set")
@@ -541,12 +552,15 @@ public class ExtensionLoader<T> {
                         if (method.getAnnotation(DisableInject.class) != null) {
                             continue;
                         }
+                        // 获取 setter 方法参数类型
                         Class<?> pt = method.getParameterTypes()[0];
                         try {
+                            // 获取属性名，比如 setName 方法对应属性名 name
                             String property = method.getName().length() > 3 ? method.getName().substring(3, 4).toLowerCase() + method.getName().substring(4) : "";
+                            // 从 ObjectFactory 中获取依赖对象
                             Object object = objectFactory.getExtension(pt, property);
-                            // 如果获取了这个扩展类实现，则调用set方法，把实力注入进去
                             if (object != null) {
+                                // 通过反射调用 setter 方法设置依赖
                                 method.invoke(instance, object);
                             }
                         } catch (Exception e) {
@@ -573,10 +587,10 @@ public class ExtensionLoader<T> {
         return clazz;
     }
 
-    // 加载当前扩展所有实现，看是否有实现类上被标注@Adaptive
+    // 加载当前扩展所有实现
     private Map<String, Class<?>> getExtensionClasses() {
         // 多次判断是为了防止同一个扩展点被多次加载
-        // 先尝试从缓存中获取classes
+        // 从缓存中获取已加载的拓展类
         Map<String, Class<?>> classes = cachedClasses.get();
         if (classes == null) {
             synchronized (cachedClasses) {
@@ -595,10 +609,7 @@ public class ExtensionLoader<T> {
 
     // synchronized in getExtensionClasses
     private Map<String, Class<?>> loadExtensionClasses() {
-        // 检查是否有SPI注解。如果有，则获取注解中填写的名称，并缓存为默认实现名。
-        // 如@SPI("impl")会保存impl为默认实现
-        // 得到SPI的注解
-        // 所有扩展点接口都必须被SPI注释标注
+        // 获取 SPI 注解，这里的 type 变量是在调用 getExtensionLoader 方法时传入的
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
             // 获取SPI的值，比如cluster默认为failover
@@ -625,8 +636,8 @@ public class ExtensionLoader<T> {
         return extensionClasses;
     }
 
-    // 加载相关路径下的配置文件 @param type 接口全名称path
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) {
+        // fileName = 文件夹路径 + type 全限定名
         String fileName = dir + type.getName();
         try {
             Enumeration<java.net.URL> urls;
