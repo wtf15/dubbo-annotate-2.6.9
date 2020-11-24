@@ -682,7 +682,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokers == null) {
                 invokers = localMethodInvokerMap.get(methodName);
             }
-            // 根据"*”匹配Invokero用星号去匹配Invoker列表，如果还没有匹配到，则进入最后一步兜底操作
+            // 根据"*”匹配 Invoker 用星号去匹配Invoker列表，如果还没有匹配到，则进入最后一步兜底操作
             if (invokers == null) {
                 invokers = localMethodInvokerMap.get(Constants.ANY_VALUE);
             }

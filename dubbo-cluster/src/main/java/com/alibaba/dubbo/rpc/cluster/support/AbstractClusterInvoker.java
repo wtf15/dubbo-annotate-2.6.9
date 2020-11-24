@@ -314,6 +314,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
     protected List<Invoker<T>> list(Invocation invocation) throws RpcException {
         // 调用 Directory 的 list 方法列举 Invoker
+        // >>>>>>>>>
         List<Invoker<T>> invokers = directory.list(invocation);
         return invokers;
     }
