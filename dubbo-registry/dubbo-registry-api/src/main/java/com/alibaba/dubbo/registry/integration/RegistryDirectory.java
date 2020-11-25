@@ -518,6 +518,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             for (Router router : routers) {
                 // If router's url not null and is not route by runtime,we filter invokers here
                 if (router.getUrl() != null && !router.getUrl().getParameter(Constants.RUNTIME_KEY, false)) {
+                    // >>>>>>>>>
                     invokers = router.route(invokers, getConsumerUrl(), invocation);
                 }
             }
@@ -563,6 +564,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             }
         }
         // 进行服务级别路由
+        // >>>>>>>>>
         List<Invoker<T>> newInvokersList = route(invokersList, null);
         // 存储 <*, newInvokersList> 映射关系
         newMethodInvokerMap.put(Constants.ANY_VALUE, newInvokersList);

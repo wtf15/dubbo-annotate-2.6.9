@@ -97,6 +97,8 @@ public class ConditionRouterTest {
 
     @Test
     public void testRoute_matchFilter() {
+        // start
+        // >>>>>>>>>
         // 测试入口
         List<Invoker<String>> invokers = new ArrayList<Invoker<String>>();
         Invoker<String> invoker1 = new MockInvoker<String>(URL.valueOf(
