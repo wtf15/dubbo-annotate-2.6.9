@@ -203,7 +203,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         // 遍历监听返回的所有URL,分类后放入三个List中
         for (URL url : urls) {
             String protocol = url.getProtocol();
-            // 获取 category 参数，如果这个参数没有则设置默认值providers
+            // 获取 z 参数，如果这个参数没有则设置默认值providers
             String category = url.getParameter(Constants.CATEGORY_KEY, Constants.DEFAULT_CATEGORY);
             // 根据 category 参数将 url 分别放到不同的列表中
             if (Constants.ROUTERS_CATEGORY.equals(category)
@@ -688,7 +688,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokers == null) {
                 invokers = localMethodInvokerMap.get(Constants.ANY_VALUE);
             }
-            // 遍历methodlnvokerMap,找到第一个Invoker列表返回
+            // 遍历methodInvokerMap,找到第一个Invoker列表返回
             // 冗余逻辑，pull request #2861 移除了下面的 if 分支代码
             if (invokers == null) {
                 Iterator<List<Invoker<T>>> iterator = localMethodInvokerMap.values().iterator();

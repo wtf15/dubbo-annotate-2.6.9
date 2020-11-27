@@ -74,6 +74,7 @@ public abstract class AbstractDirectory<T> implements Directory<T> {
         }
 
         // 调用 doList 方法列举 Invoker，doList 是模板方法，由子类实现
+        // >>>>>>>>>
         List<Invoker<T>> invokers = doList(invocation);
         // 获取路由 Router 列表
         List<Router> localRouters = this.routers; // local reference

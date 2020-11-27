@@ -474,6 +474,7 @@ public class RegistryDirectoryTest {
      */
     @Test
     public void testParmeterRoute() {
+        // start >>>>>>>
         RegistryDirectory registryDirectory = getRegistryDirectory();
         List<URL> serviceUrls = new ArrayList<URL>();
         serviceUrls.add(SERVICEURL.addParameter("methods", "getXXX1.napoli"));
