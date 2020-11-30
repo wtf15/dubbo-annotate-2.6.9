@@ -159,6 +159,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
 
         // 通过负载均衡组件选择 Invoker
+        // >>>>>>>>>
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
