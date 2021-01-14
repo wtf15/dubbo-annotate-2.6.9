@@ -279,7 +279,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
         // 调用 doInvoke 进行后续操作
-        // >>>>>>>>>
+        // >>>>>>>>> 默认FailoverClusterInvoker
         return doInvoke(invocation, invokers, loadbalance);
     }
 

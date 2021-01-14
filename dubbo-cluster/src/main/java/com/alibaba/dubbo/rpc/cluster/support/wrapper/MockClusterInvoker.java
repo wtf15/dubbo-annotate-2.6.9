@@ -74,7 +74,8 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
             // 如果该Invoker根本就没有配置Mock,则直接调用Invoker的invoke方法并把结果返回
-            // 比如 FailoverClusterInvoker
+            // >>>>>>>>> AbstractClusterInvoker#invoke，
+            // 最终经过Filter链扩展点、Listener链扩展点会调用AbstractInvoker#invoke
             result = this.invoker.invoke(invocation);
         // 判断参数是否以force开头，即判断是否强制Mock,如果是直接执行 mock 逻辑，不发起远程调用
         } else if (value.startsWith("force")) {
